@@ -1046,6 +1046,18 @@ func TestConfiguringInternalNetworkTest(t *testing.T) {
 		t.Fatalf("Keycloak registry internal url must be %s", keycloakInternalExpected)
 	}
 
+	webSocketEndpoint := cheCm.Data["CHE_WEBSOCKET_ENDPOINT"]
+	webSocketEndpointExpected := "ws://che-host.eclipse-che.svc:8080/api/websocket"
+	if webSocketEndpoint != webSocketEndpointExpected {
+		t.Fatalf("Web socket endpoint must be %s", webSocketEndpointExpected)
+	}
+
+	webSocketEndpointMinor := cheCm.Data["CHE_WEBSOCKET_ENDPOINT__MINOR"]
+	webSocketEndpointMinorExpected := "ws://che-host.eclipse-che.svc:8080/api/websocket-minor"
+	if webSocketEndpointMinor != webSocketEndpointMinorExpected {
+		t.Fatalf("Web socket endpoint minor must be %s", webSocketEndpointMinorExpected)
+	}
+
 	// update CR and make sure Che configmap has been updated
 	cheCR.Spec.Server.UseInternalClusterSVCNames = false
 	if err := cl.Update(context.TODO(), cheCR); err != nil {
@@ -1085,6 +1097,19 @@ func TestConfiguringInternalNetworkTest(t *testing.T) {
 	if keycloakInternal != keycloakInternalExpected {
 		t.Fatalf("Keycloak internal url must be %s", keycloakInternalExpected)
 	}
+
+	webSocketEndpoint = cheCmWithDisabledInternalClusterSVCNames.Data["CHE_WEBSOCKET_ENDPOINT"]
+	webSocketEndpointExpected = "ws://che-host/api/websocket"
+	if webSocketEndpoint != webSocketEndpointExpected {
+		t.Fatalf("Web socket endpoint must be %s", webSocketEndpointExpected)
+	}
+
+	webSocketEndpointMinor = cheCmWithDisabledInternalClusterSVCNames.Data["CHE_WEBSOCKET_ENDPOINT__MINOR"]
+	webSocketEndpointMinorExpected = "ws://che-host/api/websocket-minor"
+	if webSocketEndpointMinor != webSocketEndpointMinorExpected {
+		t.Fatalf("Web socket endpoint minor must be %s", webSocketEndpointMinorExpected)
+	}
+
 }
 
 func Init() (client.Client, discovery.DiscoveryInterface, runtime.Scheme) {

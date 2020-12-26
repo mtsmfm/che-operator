@@ -14,6 +14,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 
@@ -129,10 +130,8 @@ func GetCheConfigMapData(deployContext *deploy.DeployContext) (cheEnv map[string
 	namespaceAllowUserDefined := strconv.FormatBool(deployContext.CheCluster.Spec.Server.AllowUserDefinedWorkspaceNamespaces)
 	tlsSupport := deployContext.CheCluster.Spec.Server.TlsSupport
 	protocol := "http"
-	wsprotocol := "ws"
 	if tlsSupport {
 		protocol = "https"
-		wsprotocol = "wss"
 		tls = "true"
 	}
 
@@ -183,18 +182,35 @@ func GetCheConfigMapData(deployContext *deploy.DeployContext) (cheEnv map[string
 
 	cheAPI := protocol + "://" + cheHost + "/api"
 
-	var keycloakInternalURL, pluginRegistryInternalURL, devfileRegistryInternalURL, cheInternalAPI string
+	var keycloakInternalURL, pluginRegistryInternalURL, devfileRegistryInternalURL, cheInternalAPI, webSocketEndpoint, webSocketEndpointMinor string
 
 	if deployContext.CheCluster.Spec.Server.UseInternalClusterSVCNames {
 		devfileRegistryInternalURL = deployContext.InternalService.DevfileRegistryHost
 		pluginRegistryInternalURL = deployContext.InternalService.PluginRegistryHost
 		keycloakInternalURL = deployContext.InternalService.KeycloakHost
 		cheInternalAPI = deployContext.InternalService.CheHost + "/api"
+
+		u, err := url.Parse(deployContext.InternalService.CheHost)
+		if err != nil {
+			return nil, err
+		}
+
+		webSocketEndpoint = "ws://" + u.Host + "/api/websocket"
+		webSocketEndpointMinor = "ws://" + u.Host + "/api/websocket-minor"
 	} else {
 		devfileRegistryInternalURL = devfileRegistryURL
 		pluginRegistryInternalURL = pluginRegistryURL
 		keycloakInternalURL = keycloakURL
 		cheInternalAPI = cheAPI
+
+		wsprotocol := "ws"
+
+		if tlsSupport {
+			wsprotocol = "wss"
+		}
+
+		webSocketEndpoint = wsprotocol + "://" + cheHost + "/api/websocket"
+		webSocketEndpointMinor = wsprotocol + "://" + cheHost + "/api/websocket-minor"
 	}
 
 	data := &CheConfigMap{
@@ -203,8 +219,8 @@ func GetCheConfigMapData(deployContext *deploy.DeployContext) (cheEnv map[string
 		ChePort:                                "8080",
 		CheApi:                                 cheAPI,
 		CheApiInternal:                         cheInternalAPI,
-		CheWebSocketEndpoint:                   wsprotocol + "://" + cheHost + "/api/websocket",
-		WebSocketEndpointMinor:                 wsprotocol + "://" + cheHost + "/api/websocket-minor",
+		CheWebSocketEndpoint:                   webSocketEndpoint,
+		WebSocketEndpointMinor:                 webSocketEndpointMinor,
 		CheDebugServer:                         cheDebug,
 		CheInfrastructureActive:                infra,
 		CheInfraKubernetesServiceAccountName:   "che-workspace",
