@@ -13,7 +13,6 @@ package deploy
 
 import (
 	"reflect"
-	"strconv"
 
 	orgv1 "github.com/eclipse-che/che-operator/pkg/apis/org/v1"
 	"github.com/eclipse-che/che-operator/pkg/util"
@@ -60,7 +59,6 @@ func GetIngressSpec(
 	ingressCustomSettings orgv1.IngressCustomSettings,
 	component string) (ingressUrl string, i *v1beta1.Ingress) {
 
-	tlsSupport := deployContext.CheCluster.Spec.Server.TlsSupport
 	ingressStrategy := util.GetServerExposureStrategy(deployContext.CheCluster)
 	ingressDomain := deployContext.CheCluster.Spec.K8s.IngressDomain
 	ingressClass := util.GetValue(deployContext.CheCluster.Spec.K8s.IngressClass, DefaultIngressClass)
@@ -72,13 +70,6 @@ func GetIngressSpec(
 			host = component + "-" + deployContext.CheCluster.Namespace + "." + ingressDomain
 		} else if ingressStrategy == "single-host" {
 			host = ingressDomain
-		}
-	}
-
-	tlsSecretName := util.GetValue(deployContext.CheCluster.Spec.K8s.TlsSecretName, "")
-	if tlsSupport {
-		if component == DefaultCheFlavor(deployContext.CheCluster) && deployContext.CheCluster.Spec.Server.CheHostTLSSecret != "" {
-			tlsSecretName = deployContext.CheCluster.Spec.Server.CheHostTLSSecret
 		}
 	}
 
@@ -94,7 +85,7 @@ func GetIngressSpec(
 		"kubernetes.io/ingress.class":                       ingressClass,
 		"nginx.ingress.kubernetes.io/proxy-read-timeout":    "3600",
 		"nginx.ingress.kubernetes.io/proxy-connect-timeout": "3600",
-		"nginx.ingress.kubernetes.io/ssl-redirect":          strconv.FormatBool(tlsSupport),
+		"nginx.ingress.kubernetes.io/ssl-redirect":          "false",
 	}
 	if ingressStrategy != "multi-host" && (component == DevfileRegistryName || component == PluginRegistryName) {
 		annotations["nginx.ingress.kubernetes.io/rewrite-target"] = "/$1"
@@ -131,17 +122,6 @@ func GetIngressSpec(
 				},
 			},
 		},
-	}
-
-	if tlsSupport {
-		ingress.Spec.TLS = []v1beta1.IngressTLS{
-			{
-				Hosts: []string{
-					ingressDomain,
-				},
-				SecretName: tlsSecretName,
-			},
-		}
 	}
 
 	return host + endpointPath, ingress
